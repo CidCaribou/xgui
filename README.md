@@ -1,5 +1,5 @@
 # 🚀 X-GUI Blooket Client
-# VERSION 6.72x HAS BEEN RELEASED 
+# VERSION 7.0.1 HAS BEEN RELEASED 
 [![Docs](https://img.shields.io/badge/Docs-X--GUI-1f6feb?style=for-the-badge&logo=google-chrome&logoColor=white)](https://dsmg.gitbook.io/x-gui-docs)
 [![Website](https://img.shields.io/badge/Website-X--GUI-1f6feb?style=for-the-badge&logo=google-chrome&logoColor=white)](https://xgui-client.github.io)
 [![GitHub stars](https://img.shields.io/github/stars/xull-xxx/X-GUI-BLOOKET-CLIENT?style=for-the-badge&logo=github)](https://github.com/xull-xxx/X-GUI-BLOOKET-CLIENT/stargazers)
@@ -60,7 +60,7 @@
 
 ## 📜 Credits
 - **GUI Created By:** 05Konz 
-- **Maintained & Updated By:** Xullys, Lil Skittle, CatHead, landsedge and redhorse26
+- **Maintained & Updated By:** Xullys, Lil Skittle, CatHead, landsedge, Juro5000 and redhorse26  
 - **Huge Credit To** CryptoDude3 **and** Duck Club Blooket Hacks!
 
 - **JOIN THEIR DISCORD** [HERE](https://discord.gg/xKD4zVRH4F)
@@ -82,4 +82,34 @@ Please create an issue, email me or DM on discord @xullysfr
 
 ## ⭐ Star the Repo
 If you enjoy X-GUI, please give it a **star**! 🌟
+---
+
+## 🎮 Supported Gamemodes
+
+### ✅ Answer Cheats / Global Cheats
+- Fishing Frenzy
+- Crypto Hack
+- Gold Quest
+
+### 🟢 Game-Specific Cheats
+- Crypto Hack
+- Fishing Frenzy
+- Fishing Frenzy (Solo Mode)
+- Gold Quest
+- Factory
+- Monster Brawl
+- Café (Solo Mode)
+- Tower Defense
+- Tower Defense 2
+- Battle Royale
+- Pirate's Voyage
+- Crazy Kingdom
+- Flappy Blook
+
+### ❌ Patched Gamemodes
+- Deceptive Dino's
+- Blook Rush
+- Racing
+- Classic
+- All Plus Gamemodes
 
