@@ -2712,67 +2712,47 @@ button,
                         }
                     },
                     {
-                        name: "Use Any Blook",
-                        description: "Allows you to play as any blook",
-                        run: function() {
-                            const lobby = window.location.pathname.startsWith("/play/lobby"),
-                                dashboard = !lobby && window.location.pathname.startsWith("/blooks");
-                            if (dashboard) {
-                                let key = "konzpack",
-                                    propCall = Object.prototype.hasOwnProperty.call;
-                                let webpack = webpackChunk_N_E.push([
-                                    [key],
-                                    {
-                                        [key]: () => {}
-                                    },
-                                    function(func) {
-                                        Object.prototype.hasOwnProperty.call = function() {
-                                            Object.defineProperty(arguments[0], key, {
-                                                set: () => {},
-                                                configurable: true
-                                            });
-                                            return (Object.prototype.hasOwnProperty.call = propCall).apply(this, arguments);
-                                        };
-                                        return func;
-                                    },
-                                ]);
-                                const blookData = webpack(4927).nK;
-                                const blooksHook = Object.values(document.querySelector("[class*=BlooksWrapper_content]"))[0].return.memoizedState.next;
-                                const showBlooks = blooksHook.memoizedState;
-                                const seen = {},
-                                    userBlooks = [],
-                                    prices = {
-                                        Uncommon: 5,
-                                        Rare: 20,
-                                        Epic: 75,
-                                        Legendary: 200,
-                                        Chroma: 300,
-                                        Unique: 350,
-                                        Mystical: 1000,
-                                    };
-                                for (const data of blooksHook.next.memoizedState) {
-                                    userBlooks.push(data);
-                                    seen[data.blook] = true;
-                                }
-                                for (const blook in blookData) {
-                                    if (blookData[blook].rarity != "Common" && !seen[blook])
-                                        userBlooks.push({
-                                            blook,
-                                            quantity: 1,
-                                            sellPrice: prices[blookData[blook].rarity],
-                                        });
-                                }
-                                blooksHook.next.queue.dispatch(userBlooks);
-                                blooksHook.queue.dispatch(!showBlooks);
-                                setTimeout(() => blooksHook.queue.dispatch(showBlooks), 1);
-                            } else if (lobby) getStateNode().setState({
-                                unlocks: {
-                                    includes: () => !0
-                                }
-                            });
-                            else alert("This only works in lobbies or the dashboard blooks page.");
-                        },
-                    },
+    name: "Use Any Blook",
+    description: "Allows you to play as any blook",
+    data: null,
+    getBlooks(t, e) {
+        if (!this.data?.Black) {
+            t = t ? "keys" : "entries";
+            const o = Object[t],
+                a = this;
+            Object[t] = function(e) {
+                return (e.Chick ? (a.data = e, Object[t] = o) : o).call(this, e)
+            };
+            e.render();
+        }
+    },
+    run: function() {
+        const o = getStateNode(); // Changed from T() to getStateNode()
+        var e = window.location.pathname.startsWith("/play/lobby");
+        
+        // Better page detection
+        if ((e || window.location.pathname.startsWith("/blooks")) && o) {
+            this.getBlooks(e, o);
+            if (e) {
+                o.setState({
+                    unlocks: Object.keys(this.data || {})
+                });
+            } else {
+                o.setState({
+                    blookData: Object.keys(this.data || {}).reduce((acc, blook) => {
+                        acc[blook] = o.state.blookData?.[blook] || 1;
+                        return acc;
+                    }, {}),
+                    allSets: Object.values(this.data || {}).reduce((sets, blook) => 
+                        blook.set && sets.includes(blook.set) ? sets : sets.concat(blook.set), 
+                    [])
+                });
+            }
+        } else {
+            alert("An error occurred while running Use Any Blook make sure you are on the right page!");
+        }
+    }
+},
                     {
                         name: "Every Answer Correct",
                         description: "Sets every answer to be correct",
