@@ -2716,7 +2716,7 @@ button,
                         description: "Allows you to play as any blook",
                         run: function() {
                             const lobby = window.location.pathname.startsWith("/play/lobby"),
-                            const dashboard = !lobby && window.location.pathname.startsWith("/blooks");
+                                dashboard = !lobby && window.location.pathname.startsWith("/blooks");
                             if (dashboard) {
                                 let key = "konzpack",
                                     propCall = Object.prototype.hasOwnProperty.call;
