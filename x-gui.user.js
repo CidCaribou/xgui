@@ -2736,30 +2736,96 @@ button,
                         name: "Use Any Blook",
                         description: "Allows you to play as any blook",
                         run: function() {
-                            const lobby = window.location.pathname.startsWith("/play/lobby"),
-                            const dashboard = !lobby && window.location.pathname.startsWith("/blooks");
+                            const blooksWrapper = document.querySelector("[class*=BlooksWrapper_content]");
+                            const lobby = window.location.pathname.startsWith("/play/lobby");
+                            const dashboard = !lobby && (
+                                !!blooksWrapper ||
+                                window.location.pathname.startsWith("/blooks") ||
+                                /\/blooks(\/|$)/.test(window.location.pathname)
+                            );
                             if (dashboard) {
+                                console.log("[X-GUI] Use Any Blook: dashboard branch", {
+                                    href: window.location.href,
+                                    foundWrapper: !!blooksWrapper
+                                });
                                 let key = "konzpack",
                                     propCall = Object.prototype.hasOwnProperty.call;
-                                let webpack = webpackChunk_N_E.push([
-                                    [key],
-                                    {
-                                        [key]: () => {}
-                                    },
-                                    function(func) {
-                                        Object.prototype.hasOwnProperty.call = function() {
-                                            Object.defineProperty(arguments[0], key, {
-                                                set: () => {},
-                                                configurable: true
-                                            });
-                                            return (Object.prototype.hasOwnProperty.call = propCall).apply(this, arguments);
-                                        };
-                                        return func;
-                                    },
-                                ]);
-                                const blookData = webpack(4927).nK;
-                                const blooksHook = Object.values(document.querySelector("[class*=BlooksWrapper_content]"))[0].return.memoizedState.next;
+                                let webpack;
+                                try {
+                                    webpack = webpackChunk_N_E.push([
+                                        [key],
+                                        {
+                                            [key]: () => {}
+                                        },
+                                        function(func) {
+                                            Object.prototype.hasOwnProperty.call = function() {
+                                                Object.defineProperty(arguments[0], key, {
+                                                    set: () => {},
+                                                    configurable: true
+                                                });
+                                                return (Object.prototype.hasOwnProperty.call = propCall).apply(this, arguments);
+                                            };
+                                            return func;
+                                        },
+                                    ]);
+                                } catch (e) {
+                                    console.error("[X-GUI] Use Any Blook: webpack hook failed", e);
+                                    throw new Error("webpack runtime not available: " + e.message);
+                                }
+                                console.log("[X-GUI] Use Any Blook: webpack require captured", typeof webpack);
+                                let blookData = null;
+                                try {
+                                    const m = webpack(4927);
+                                    if (m && m.nK && typeof m.nK === "object") blookData = m.nK;
+                                } catch (e) {
+                                    console.warn("[X-GUI] Use Any Blook: webpack(4927) threw, will scan modules", e);
+                                }
+                                if (!blookData) {
+                                    console.log("[X-GUI] Use Any Blook: scanning webpack modules for blook data...");
+                                    const moduleMap = webpack && webpack.m ? webpack.m : (webpack && webpack.c ? webpack.c : null);
+                                    const ids = moduleMap ? Object.keys(moduleMap) : [];
+                                    console.log("[X-GUI] Use Any Blook: module count =", ids.length);
+                                    for (const id of ids) {
+                                        let mod;
+                                        try { mod = webpack(id); } catch { continue; }
+                                        if (!mod || typeof mod !== "object") continue;
+                                        for (const exportKey of Object.keys(mod)) {
+                                            const v = mod[exportKey];
+                                            if (!v || typeof v !== "object") continue;
+                                            const sample = Object.values(v).find(x => x && typeof x === "object" && "rarity" in x && "color" in x);
+                                            if (sample) {
+                                                blookData = v;
+                                                console.log("[X-GUI] Use Any Blook: found blook data at module", id, "export", exportKey, "sample:", sample);
+                                                break;
+                                            }
+                                        }
+                                        if (blookData) break;
+                                    }
+                                }
+                                if (!blookData) {
+                                    throw new Error("Could not locate blook data in webpack modules — Blooket likely changed its bundle. Check console for details.");
+                                }
+                                const wrapperEl = blooksWrapper || document.querySelector("[class*=BlooksWrapper_content]");
+                                if (!wrapperEl) {
+                                    throw new Error("BlooksWrapper element not found on this page — make sure you're on https://dashboard.blooket.com/blooks");
+                                }
+                                const fiberKey = Object.keys(wrapperEl).find(k => k.startsWith("__reactFiber$"));
+                                console.log("[X-GUI] Use Any Blook: fiberKey =", fiberKey);
+                                if (!fiberKey) {
+                                    throw new Error("Could not find React fiber on the blooks wrapper element.");
+                                }
+                                const fiber = wrapperEl[fiberKey];
+                                if (!fiber || !fiber.return || !fiber.return.memoizedState) {
+                                    console.error("[X-GUI] Use Any Blook: bad fiber structure", fiber);
+                                    throw new Error("React fiber structure not as expected — Blooket UI may have changed.");
+                                }
+                                const blooksHook = fiber.return.memoizedState.next;
+                                if (!blooksHook || !blooksHook.next) {
+                                    console.error("[X-GUI] Use Any Blook: hooks chain unexpected", fiber.return.memoizedState);
+                                    throw new Error("Could not walk hooks chain on BlooksWrapper — Blooket UI may have changed.");
+                                }
                                 const showBlooks = blooksHook.memoizedState;
+                                console.log("[X-GUI] Use Any Blook: showBlooks =", showBlooks, "userBlooks count =", Array.isArray(blooksHook.next.memoizedState) ? blooksHook.next.memoizedState.length : "N/A");
                                 const seen = {},
                                     userBlooks = [],
                                     prices = {
@@ -2783,6 +2849,7 @@ button,
                                             sellPrice: prices[blookData[blook].rarity],
                                         });
                                 }
+                                console.log("[X-GUI] Use Any Blook: dispatching", userBlooks.length, "blooks");
                                 blooksHook.next.queue.dispatch(userBlooks);
                                 blooksHook.queue.dispatch(!showBlooks);
                                 setTimeout(() => blooksHook.queue.dispatch(showBlooks), 1);
@@ -8782,11 +8849,12 @@ button,
                             }
                         }
                     } catch (err) {
+                        console.error(`[X-GUI] Error running "${cheat.name}":`, err);
                         Logs.addLog(`Error running "${cheat.name}": ${err.message}`, "var(--error)");
                         if (areSweetAlertsEnabled()) {
                             Swal.fire({
                                 title: 'Cheat Error',
-                                text: `An error occurred while running ${cheat.name} make sure you are on the right page!`,
+                                text: `An error occurred while running ${cheat.name} make sure you are on the right page! (See console for details)`,
                                 icon: 'error',
                                 toast: true,
                                 position: 'bottom',
