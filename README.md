@@ -1,5 +1,5 @@
 # 🚀 X-GUI Blooket Client
-# VERSION 7.0.1 HAS BEEN RELEASED 
+# VERSION 7.1.0 HAS BEEN RELEASED 
 [![Docs](https://img.shields.io/badge/Docs-X--GUI-1f6feb?style=for-the-badge&logo=google-chrome&logoColor=white)](https://dsmg.gitbook.io/x-gui-docs)
 [![Website](https://img.shields.io/badge/Website-X--GUI-1f6feb?style=for-the-badge&logo=google-chrome&logoColor=white)](https://xgui-client.github.io)
 [![GitHub stars](https://img.shields.io/github/stars/xull-xxx/X-GUI-BLOOKET-CLIENT?style=for-the-badge&logo=github)](https://github.com/xull-xxx/X-GUI-BLOOKET-CLIENT/stargazers)
