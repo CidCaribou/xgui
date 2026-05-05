@@ -57,7 +57,7 @@ console.log("%c Join the discord! %c https://discord.gg/xKD4zVRH4F", "color: #ff
     const timeProcessed = 1747005941679;
     let latestProcess = -1;
     const cheat = (async () => {
-        const versionName = "7.1.0x";
+        const versionName = "7.1.3x";
         const gui = document.createElement("div");
         Object.assign(gui.style, {
             top: window.innerHeight / 2 - 250 + "px",
@@ -2138,22 +2138,146 @@ button,
                         },
                     }, {
                         name: "Simulate Unlock",
-                        description: "Simulates unlocking a certain blook",
+                        description: "Simulates unlocking a certain blook (verbose logs in console)",
                         inputs: [{
                             name: "Blook (Case Sensitive)"
                         }],
-                        run: (unlockedBlook) => {
-                            const stateNode = Object.values(document.querySelector("#app>div>div"))[1].children[0]._owner.stateNode;
-                            stateNode.setState({
-                                loadingPack: !1,
-                                openPack: !0,
-                                unlockedBlook,
-                                newUnlock: !0,
-                                canOpen: !1
-                            });
-                            setTimeout(() => stateNode.setState({
-                                canOpen: !0
-                            }), 200);
+                        run: async (unlockedBlook) => {
+                            const log = (...a) => console.log("%c[Simulate Unlock]", "color:#8b5cf6;font-weight:700", ...a);
+                            const warn = (...a) => console.warn("%c[Simulate Unlock]", "color:#f59e0b;font-weight:700", ...a);
+                            const err = (...a) => console.error("%c[Simulate Unlock]", "color:#ef4444;font-weight:700", ...a);
+                            log("starting; target =", unlockedBlook);
+                            if (!unlockedBlook) { err("no blook name provided"); return; }
+                            if (!/\/market\b/.test(location.pathname)) warn("not on /market");
+
+                            let blookDB = null;
+                            try {
+                                const chunks = window.webpackChunk_N_E;
+                                if (chunks && Array.isArray(chunks)) {
+                                    let cap = null;
+                                    chunks.push([[Math.random()], {}, (req) => { cap = req; }]);
+                                    if (cap) {
+                                        for (const chunk of chunks) {
+                                            const modules = chunk[1]; if (!modules) continue;
+                                            for (const id of Object.keys(modules)) {
+                                                const fnSrc = String(modules[id]);
+                                                if (/Chick.*Chicken.*Cow|teamName.*rarity.*url/.test(fnSrc)) {
+                                                    try { const m = cap(id); for (const k of Object.keys(m||{})) { const v=m[k]; if(v&&typeof v==='object'&&v.Chicken&&v.Cow&&v.Chicken.rarity){blookDB=v;break;} } } catch {}
+                                                    if (blookDB) break;
+                                                }
+                                            }
+                                            if (blookDB) break;
+                                        }
+                                    }
+                                }
+                            } catch (e) { warn("blook DB lookup failed:", e); }
+
+                            let blookData = null, canonName = null;
+                            if (blookDB) {
+                                const wantLower = String(unlockedBlook).trim().toLowerCase();
+                                for (const [k, v] of Object.entries(blookDB)) {
+                                    if (k.toLowerCase() === wantLower) { canonName = k; blookData = v; break; }
+                                }
+                            }
+                            if (blookData) log("blook found in DB:", canonName, "rarity:", blookData.rarity, "set:", blookData.realSet || blookData.set);
+                            else warn("blook not in DB");
+
+                            const root = document.querySelector("#app") || document.body;
+                            const fiberKey = Object.keys(root).find(k => k.startsWith("__reactFiber"));
+                            const containerKey = Object.keys(root).find(k => k.startsWith("__reactContainer"));
+                            const entry = fiberKey ? root[fiberKey] : root[containerKey]?.stateNode?.current;
+                            if (!entry) { err("no react fiber"); return; }
+                            const findByPred = (pred) => { let t = null; const seen = new Set(); (function w(f){ if(!f||seen.has(f)||t)return; seen.add(f); if (typeof f.type === "function" && f.memoizedProps && pred(f.memoizedProps)) t = f; w(f.child); w(f.sibling); })(entry); return t; };
+                            let market = findByPred(p => "tokens" in p && Array.isArray(p.packs) && p.packs[0]?.rates);
+                            let ek = findByPred(p => typeof p.setBlookResults === "function" && typeof p.setSelectedPack === "function" && Array.isArray(p.packs));
+                            if (!market) { err("market not found"); return; }
+                            const collect = (f) => { const o = []; let h = f.memoizedState, i = 0; while (h && i < 30) { if (h.queue && h.queue.dispatch) o.push({ i, hook: h, dispatch: h.queue.dispatch }); h = h.next; i++; } return o; };
+                            const hooks = collect(market);
+                            let setBR = null;
+                            (function find(f){ if (!f || setBR) return; if (typeof f.type === "function" && typeof f.memoizedProps?.setBlookResults === "function") setBR = f.memoizedProps.setBlookResults; find(f.child); find(f.sibling); })(market);
+                            const findIdx = (pred) => hooks.findIndex(x => pred(x.hook.memoizedState));
+                            let selPackIdx = findIdx(v => v && typeof v === "object" && !Array.isArray(v) && ("packId" in v || "rates" in v));
+                            if (selPackIdx < 0) selPackIdx = 2;
+                            let blookIdx = setBR ? hooks.findIndex(x => x.dispatch === setBR) : -1;
+                            if (blookIdx < 0) blookIdx = findIdx(v => v && typeof v === "object" && "uniqueBlooks" in v);
+                            if (blookIdx < 0) blookIdx = 3;
+                            let showIdx = -1;
+                            for (let k = hooks.length - 1; k >= 0; k--) {
+                                if (typeof hooks[k].hook.memoizedState === "boolean") { showIdx = k; break; }
+                            }
+                            if (showIdx < 0) showIdx = 4;
+
+                            const targetPackName = blookData?.realSet || blookData?.set || null;
+                            const packs = market.memoizedProps.packs;
+                            let basePack = null;
+                            if (targetPackName) basePack = packs.find(p => p && p.name && p.name.toLowerCase() === targetPackName.toLowerCase());
+                            if (!basePack) { basePack = packs[0] || {}; warn("'" + targetPackName + "' pack not in market — using fallback"); }
+                            else log("using market pack:", basePack.name);
+
+                            const cleanName = String(canonName || unlockedBlook).trim();
+                            const wordsArr = cleanName.split(/\s+/);
+                            const camelId = wordsArr[0].toLowerCase() + wordsArr.slice(1).map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join("");
+                            const blookName = canonName || unlockedBlook;
+                            const blookUrl = blookData?.url || ("https://ac.blooket.com/marketassets/blooks/" + cleanName.toLowerCase().replace(/\s+/g, "") + ".svg");
+                            const rarity = blookData?.rarity || "Common";
+                            const color = blookData?.color || "";
+
+                            // If blook is in the pack's natural rates, use it as-is (this is what makes the modal work).
+                            // If not, replace the last rate slot with our blook (works for some blooks; may fail for others).
+                            const origRates = (basePack.rates || []).map(r => ({ ...r }));
+                            let inNaturalRates = false;
+                            for (let k = 0; k < origRates.length; k++) {
+                                if ((origRates[k].blookName && origRates[k].blookName.toLowerCase() === cleanName.toLowerCase()) || origRates[k].blookId === camelId) {
+                                    inNaturalRates = true;
+                                    log("blook is naturally in pack rates");
+                                    break;
+                                }
+                            }
+                            if (!inNaturalRates && origRates.length > 0) {
+                                const last = origRates[origRates.length - 1];
+                                origRates[origRates.length - 1] = { blookId: camelId, blookName, rate: last.rate };
+                                log("replaced rate slot for '" + last.blookName + "' with '" + blookName + "' (rate " + last.rate + ")");
+                            }
+
+                            const chosenPack = { ...basePack, rates: origRates };
+                            const blookResults = {
+                                purchaseInfo: [{ blook: blookName, isNewToUser: false }],
+                                uniqueBlooks: [{
+                                    blookId: camelId, name: blookName, url: blookUrl,
+                                    rarity, color,
+                                    isFree: false, isHidden: !!blookData?.isHidden,
+                                    order: 0, pack: chosenPack.packId || "",
+                                    price: 5, score: blookData?.score ?? 5
+                                }],
+                                remainingTokens: market.memoizedProps.tokens ?? 0
+                            };
+
+                            log("dispatching: pack =", chosenPack.name, "| blook =", blookName, "| rarity =", rarity);
+
+                            // Reset to force fresh remount
+                            try { hooks[blookIdx]?.dispatch(null); } catch {}
+                            try { hooks[showIdx]?.dispatch(false); } catch {}
+                            try { hooks[selPackIdx]?.dispatch(null); } catch {}
+                            if (ek) { let h2 = ek.memoizedState, j = 0; while (h2 && j < 10) { if (h2.queue?.dispatch && typeof h2.memoizedState === "boolean") { try { h2.queue.dispatch(false); } catch {} break; } h2 = h2.next; j++; } }
+                            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+                            // Dispatch fresh state
+                            try { hooks[selPackIdx]?.dispatch(chosenPack); log("dispatched selectedPack"); } catch (e) { err("selPack:", e); }
+                            if (ek) {
+                                let h2 = ek.memoizedState, j = 0;
+                                while (h2 && j < 10) {
+                                    if (h2.queue?.dispatch && typeof h2.memoizedState === "boolean") {
+                                        try { h2.queue.dispatch(true); log("ek hook[" + j + "] = true"); } catch (e) { err("ek:", e); }
+                                        break;
+                                    }
+                                    h2 = h2.next; j++;
+                                }
+                            }
+                            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                            try { hooks[blookIdx]?.dispatch(blookResults); log("dispatched blookResults"); } catch (e) { err("br:", e); }
+                            try { hooks[showIdx]?.dispatch(true); log("dispatched show=true"); } catch (e) { err("show:", e); }
+                            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                            log("done — '" + blookName + "' (" + rarity + ", " + chosenPack.name + " pack)" + (inNaturalRates ? "" : " [rate slot replaced]"));
                         }
                     }, {
                         name: "Simulate Pack",
@@ -2215,80 +2339,108 @@ button,
                         }
                     }, {
                         name: "Spam Buy Blooks",
-                        description: "Opens a box an amount of times",
+                        description: "Simulates opening a pack an amount of times (client-side, no tokens spent)",
                         inputs: [{
-                                name: "Box",
+                                name: "Pack",
                                 type: "options",
-                                options: () =>
-                                    Array.from(document.querySelectorAll("[class*='packsWrapper'] > div")).reduce((a, b) => {
-                                        b.querySelector("[class*='blookContainer'] > img") || a.push(b.querySelector("[class*='packImgContainer'] > img").alt);
-                                        return a;
-                                    }, []),
+                                options: () => {
+                                    const root = document.querySelector("#app") || document.body;
+                                    const fk = Object.keys(root).find(k => k.startsWith("__reactFiber"));
+                                    if (!fk) return [];
+                                    let market = null;
+                                    (function w(f){ if(!f||market)return; if (typeof f.type === "function" && f.memoizedProps?.tokens !== undefined && Array.isArray(f.memoizedProps?.packs) && f.memoizedProps.packs[0]?.rates) market = f; w(f.child); w(f.sibling); })(root[fk]);
+                                    return market ? market.memoizedProps.packs.map(p => p.name) : [];
+                                }
                             },
                             {
                                 name: "Amount",
-                                type: "number",
+                                type: "number"
                             },
                             {
                                 name: "Show Unlocks",
                                 type: "options",
-                                options: [{
-                                        name: "Show Unlocks",
-                                        value: true,
-                                    },
-                                    {
-                                        name: "Don't Show Unlocks",
-                                        value: false,
-                                    },
-                                ],
-                            },
+                                options: [
+                                    { name: "Show Unlocks", value: true },
+                                    { name: "Don't Show Unlocks", value: false }
+                                ]
+                            }
                         ],
-                        run: async function(box, amountToOpen, alertBlooks) {
-                            if (window.location.pathname.startsWith("/market")) {
-                                const stateNode = getStateNode();
-                                const prices = Array.prototype.reduce.call(
-                                    document.querySelectorAll("[class*='packsWrapper'] > div"),
-                                    (a, b) => {
-                                        b.querySelector("[class*='blookContainer'] > img") || (a[b.querySelector("[class*='packImgContainer'] > img").alt] = parseInt(b.querySelector("[class*='packBottom']").textContent));
-                                        return a;
-                                    }, {}
-                                );
-                                box = box
-                                    .split(" ")
-                                    .map((str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase())
-                                    .join(" ");
-                                const cost = prices[box];
-                                if (!cost) return alert("I couldn't find that box!");
-                                const canOpen = Math.floor(stateNode.state.tokens / cost);
-                                if (canOpen <= 0) return alert("You do not have enough tokens!");
-                                const amount = Math.min(canOpen, amountToOpen || 0);
-                                const blooks = {},
-                                    now = Date.now();
-                                for (let i = 0; i < amount; i++) {
-                                    await stateNode.buyPack(true, box);
-                                    blooks[stateNode.state.unlockedBlook] ||= 0;
-                                    blooks[stateNode.state.unlockedBlook]++;
-                                    stateNode.startOpening();
-                                    clearTimeout(stateNode.openTimeout);
-                                    const rarity = stateNode.state.purchasedBlookRarity;
-                                    stateNode.setState({
-                                        canOpen: true,
-                                        currentPack: "",
-                                        opening: alertBlooks,
-                                        doneOpening: alertBlooks,
-                                        openPack: alertBlooks
-                                    });
-                                    clearTimeout(stateNode.canOpenTimeout);
-                                    if (rarity == "Chroma") break;
+                        run: async function(packName, amountToOpen, showUnlocks) {
+                            const log = (...a) => console.log("%c[Spam Buy]", "color:#10b981;font-weight:700", ...a);
+                            const warn = (...a) => console.warn("%c[Spam Buy]", "color:#f59e0b;font-weight:700", ...a);
+                            const err = (...a) => console.error("%c[Spam Buy]", "color:#ef4444;font-weight:700", ...a);
+                            if (!/\/market\b/.test(location.pathname)) { warn("not on /market"); return; }
+                            const amount = parseInt(amountToOpen, 10);
+                            if (!Number.isFinite(amount) || amount <= 0) { err("invalid amount:", amountToOpen); return; }
+                            const root = document.querySelector("#app") || document.body;
+                            const fk = Object.keys(root).find(k => k.startsWith("__reactFiber"));
+                            let market = null;
+                            (function w(f){ if(!f||market)return; if (typeof f.type === "function" && f.memoizedProps?.tokens !== undefined && Array.isArray(f.memoizedProps?.packs) && f.memoizedProps.packs[0]?.rates) market = f; w(f.child); w(f.sibling); })(root[fk]);
+                            if (!market) { err("market component not found"); return; }
+                            const packs = market.memoizedProps.packs;
+                            const pack = packs.find(p => p.name && p.name.toLowerCase() === String(packName).trim().toLowerCase());
+                            if (!pack) { err("pack not found:", packName); return; }
+                            if (!Array.isArray(pack.rates) || !pack.rates.length) { err("pack has no rates"); return; }
+                            log("opening", amount, "x", pack.name);
+                            let blookDB = null;
+                            try {
+                                const chunks = window.webpackChunk_N_E;
+                                let cap = null;
+                                chunks.push([[Math.random()], {}, (req) => { cap = req; }]);
+                                if (cap) {
+                                    for (const chunk of chunks) {
+                                        const modules = chunk[1]; if (!modules) continue;
+                                        for (const id of Object.keys(modules)) {
+                                            const fnSrc = String(modules[id]);
+                                            if (/Chick.*Chicken.*Cow|teamName.*rarity.*url/.test(fnSrc)) {
+                                                try { const m = cap(id); for (const k of Object.keys(m||{})) { const v=m[k]; if(v&&typeof v==='object'&&v.Chicken&&v.Cow&&v.Chicken.rarity){blookDB=v;break;} } } catch {}
+                                                if (blookDB) break;
+                                            }
+                                        }
+                                        if (blookDB) break;
+                                    }
                                 }
-                                await new Promise((r) => setTimeout(r));
-                                alert(
-                                    `(${Date.now() - now}ms) Results:\n${Object.entries(blooks)
-                                        .map(([blook, amount]) => `    ${blook} ${amount}`)
-                                        .join(`\n`)}`
-                                );
-                            } else alert("This can only be ran in the Market page.");
-                        },
+                            } catch {}
+                            const totalRate = pack.rates.reduce((s, r) => s + (Number(r.rate) || 0), 0);
+                            const pickOne = () => { let roll = Math.random() * totalRate; for (const r of pack.rates) { roll -= (Number(r.rate) || 0); if (roll <= 0) return r; } return pack.rates[pack.rates.length - 1]; };
+                            const counts = {}; const rarityCounts = {};
+                            const RARITY_RANK = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Chroma", "Mystical"];
+                            let stoppedEarly = false;
+                            const t0 = Date.now();
+                            for (let i = 0; i < amount; i++) {
+                                const r = pickOne();
+                                const name = r.blookName || r.blookId || "Unknown";
+                                counts[name] = (counts[name] || 0) + 1;
+                                const rarity = blookDB?.[name]?.rarity;
+                                if (rarity) rarityCounts[rarity] = (rarityCounts[rarity] || 0) + 1;
+                                if (rarity === "Chroma" || rarity === "Mystical") { stoppedEarly = true; log("hit", rarity, "— stopping"); break; }
+                            }
+                            const elapsed = Date.now() - t0;
+                            log("done in", elapsed, "ms; counts:", counts);
+                            const summary = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+                            const totalOpens = summary.reduce((s, [, c]) => s + c, 0);
+                            if (showUnlocks && typeof Swal !== "undefined") {
+                                const rows = summary.map(([n, c]) => {
+                                    const bd = blookDB?.[n] || {};
+                                    const url = bd.url || "https://ac.blooket.com/marketassets/blooks/" + n.toLowerCase().replace(/\s+/g, "") + ".svg";
+                                    const rarity = bd.rarity || "";
+                                    const color = bd.color || "#666";
+                                    return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.08);">' +
+                                        '<img src="' + url + '" style="width:36px;height:36px;object-fit:contain;flex-shrink:0;">' +
+                                        '<div style="flex:1;text-align:left;"><div style="font-weight:700;color:#fff;">' + n + '</div>' +
+                                        (rarity ? '<div style="font-size:11px;color:' + color + ';font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">' + rarity + '</div>' : '') +
+                                        '</div><div style="font-weight:900;color:#fff;font-size:18px;">x' + c + '</div></div>';
+                                }).join("");
+                                const rarityLine = Object.entries(rarityCounts).sort((a, b) => RARITY_RANK.indexOf(b[0]) - RARITY_RANK.indexOf(a[0])).map(([r, c]) => r + ": " + c).join(" • ");
+                                Swal.fire({
+                                    title: pack.name + " × " + totalOpens + (stoppedEarly ? " (stopped early)" : ""),
+                                    html: '<div style="max-height:50vh;overflow-y:auto;text-align:left;">' + rows + '</div>' +
+                                        (rarityLine ? '<div style="margin-top:10px;font-size:12px;opacity:0.7;">' + rarityLine + '</div>' : '') +
+                                        '<div style="margin-top:6px;font-size:11px;opacity:0.5;">' + elapsed + 'ms (simulated, no tokens spent)</div>',
+                                    background: "#1a1a1a", color: "#fff", confirmButtonColor: "#5b4bdb", width: "560px"
+                                });
+                            } else { console.log("%c[Spam Buy] Results", "color:#10b981;font-weight:700", counts); }
+                        }
                     },
                     {
                         name: "Zoom Hack",
@@ -2712,67 +2864,46 @@ button,
                         }
                     },
                     {
-                        name: "Use Any Blook",
-                        description: "Allows you to play as any blook",
-                        run: function() {
-                            const lobby = window.location.pathname.startsWith("/play/lobby"),
-                                dashboard = !lobby && window.location.pathname.startsWith("/blooks");
-                            if (dashboard) {
-                                let key = "konzpack",
-                                    propCall = Object.prototype.hasOwnProperty.call;
-                                let webpack = webpackChunk_N_E.push([
-                                    [key],
-                                    {
-                                        [key]: () => {}
-                                    },
-                                    function(func) {
-                                        Object.prototype.hasOwnProperty.call = function() {
-                                            Object.defineProperty(arguments[0], key, {
-                                                set: () => {},
-                                                configurable: true
-                                            });
-                                            return (Object.prototype.hasOwnProperty.call = propCall).apply(this, arguments);
-                                        };
-                                        return func;
-                                    },
-                                ]);
-                                const blookData = webpack(4927).nK;
-                                const blooksHook = Object.values(document.querySelector("[class*=BlooksWrapper_content]"))[0].return.memoizedState.next;
-                                const showBlooks = blooksHook.memoizedState;
-                                const seen = {},
-                                    userBlooks = [],
-                                    prices = {
-                                        Uncommon: 5,
-                                        Rare: 20,
-                                        Epic: 75,
-                                        Legendary: 200,
-                                        Chroma: 300,
-                                        Unique: 350,
-                                        Mystical: 1000,
-                                    };
-                                for (const data of blooksHook.next.memoizedState) {
-                                    userBlooks.push(data);
-                                    seen[data.blook] = true;
-                                }
-                                for (const blook in blookData) {
-                                    if (blookData[blook].rarity != "Common" && !seen[blook])
-                                        userBlooks.push({
-                                            blook,
-                                            quantity: 1,
-                                            sellPrice: prices[blookData[blook].rarity],
-                                        });
-                                }
-                                blooksHook.next.queue.dispatch(userBlooks);
-                                blooksHook.queue.dispatch(!showBlooks);
-                                setTimeout(() => blooksHook.queue.dispatch(showBlooks), 1);
-                            } else if (lobby) getStateNode().setState({
-                                unlocks: {
-                                    includes: () => !0
-                                }
-                            });
-                            else alert("This only works in lobbies or the dashboard blooks page.");
-                        },
-                    },
+    name: "Use Any Blook",
+    description: "Allows you to play as any blook",
+    data: null,
+    getBlooks(t, e) {
+        if (!this.data?.Black) {
+            t = t ? "keys" : "entries";
+            const o = Object[t],
+                a = this;
+            Object[t] = function(e) {
+                return (e.Chick ? (a.data = e, Object[t] = o) : o).call(this, e)
+            };
+            e.render();
+        }
+    },
+    run: function() {
+        const o = getStateNode(); 
+        var e = window.location.pathname.startsWith("/play/lobby");
+        
+        if ((e || window.location.pathname.startsWith("/blooks")) && o) {
+            this.getBlooks(e, o);
+            if (e) {
+                o.setState({
+                    unlocks: Object.keys(this.data || {})
+                });
+            } else {
+                o.setState({
+                    blookData: Object.keys(this.data || {}).reduce((acc, blook) => {
+                        acc[blook] = o.state.blookData?.[blook] || 1;
+                        return acc;
+                    }, {}),
+                    allSets: Object.values(this.data || {}).reduce((sets, blook) => 
+                        blook.set && sets.includes(blook.set) ? sets : sets.concat(blook.set), 
+                    [])
+                });
+            }
+        } else {
+            alert("An error occurred while running Use Any Blook make sure you are on the right page!");
+        }
+    }
+},
                     {
                         name: "Every Answer Correct",
                         description: "Sets every answer to be correct",
@@ -8761,11 +8892,12 @@ button,
                             }
                         }
                     } catch (err) {
+                        console.error(`Error running "${cheat.name}":`, err);
                         Logs.addLog(`Error running "${cheat.name}": ${err.message}`, "var(--error)");
                         if (areSweetAlertsEnabled()) {
                             Swal.fire({
                                 title: 'Cheat Error',
-                                text: `An error occurred while running ${cheat.name} make sure you are on the right page!`,
+                                text: `An error occurred while running ${cheat.name} make sure you are on the right page! (See console for details)`,
                                 icon: 'error',
                                 toast: true,
                                 position: 'bottom',
@@ -8967,6 +9099,7 @@ button,
             };
         }
         const versions = [
+            ["Version 7.1.3x", "Fixed simulate unlock blooks, Fixed use any blook not working in blooks page, And added Size for client blooks", "null"],
             ["Version 7.1.0x", "Fixed the Custom Blook Editor so blooks now load correctly on the Play page. Updated the Blook Part List in the editor to include new items. Fixed the custom module issue where CSP was always detected. Corrected the position of CSP alerts in Custom Modules. Added Sweet Alerts to the Client Blook Editor. Fixed window.alert not working on certain pages. Added Gold Lock. Added Crypto Lock. Added Blooket Part Unlocker. Added a Leaderboard Tab and updated it for Colyseus.", "null"],
             ["Version 7x", "Redesigned alt manager, Updated Client Blooks UI, Improved changelog page, Cleaned up a lot of code, Added helpful quality-of-life features, Brought features from BCP into X-GUI, Added new modules, Settings now save globally, Removed glow and made the UI less rounded, and Updated info and credits", "null"],
             ["Version 6.70x", "ADDED SMOOTH GUI ANIMATIONS, FIXED CUSTOM MODULE BUGS, ALLOWED TEXT VALUES FOR STATS, FIXED CRYPTO STEALING, ADDED SPAM CRYPTO HACK, UPDATED ICONS, FIXED STORAGE SYNC, AND UPDATED CREDITS.", "null"],
@@ -13302,6 +13435,59 @@ button,
     padding: 4px;
     cursor: pointer;
 }
+.size-slider-wrapper {
+    background: rgba(0,0,0,.3);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.size-slider-label {
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.size-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: linear-gradient(90deg, #8b5cf6 var(--pct,50%), rgba(255,255,255,.1) var(--pct,50%));
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+.size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #8b5cf6;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(139,92,246,.4);
+}
+.size-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #8b5cf6;
+    cursor: pointer;
+}
+.size-slider-value {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: monospace;
+    min-width: 48px;
+    text-align: right;
+    flex-shrink: 0;
+}
 .blook-btn {
     height: 42px;
     border-radius: 10px;
@@ -13477,6 +13663,8 @@ button,
     width: 110px;
     height: 110px;
     object-fit: contain;
+    transition: transform 0.15s ease;
+    transform-origin: center center;
 }
 .preview-iframe {
     position: absolute;
@@ -13703,6 +13891,29 @@ button,
         colIn.className = "blook-input";
         colIn.value = "#ffffff";
         colorWrapper.append(colTextIn, colIn);
+        const sizeWrapper = document.createElement("div");
+        sizeWrapper.className = "size-slider-wrapper";
+        const sizeLabel = document.createElement("span");
+        sizeLabel.className = "size-slider-label";
+        sizeLabel.textContent = "Size";
+        const sizeIn = document.createElement("input");
+        sizeIn.type = "range";
+        sizeIn.className = "size-slider";
+        sizeIn.min = "25";
+        sizeIn.max = "300";
+        sizeIn.step = "1";
+        sizeIn.value = "100";
+        const sizeValue = document.createElement("span");
+        sizeValue.className = "size-slider-value";
+        sizeValue.textContent = "100%";
+        sizeWrapper.append(sizeLabel, sizeIn, sizeValue);
+        const updateSizeFill = () => {
+            const v = parseInt(sizeIn.value, 10);
+            const pct = ((v - parseInt(sizeIn.min, 10)) / (parseInt(sizeIn.max, 10) - parseInt(sizeIn.min, 10))) * 100;
+            sizeIn.style.setProperty('--pct', pct + '%');
+            sizeValue.textContent = v + '%';
+        };
+        updateSizeFill();
         const actionButtonGroup = document.createElement("div");
         actionButtonGroup.className = "button-group";
         const applyBtn = document.createElement("button");
@@ -13712,7 +13923,7 @@ button,
         saveBtn.className = "blook-btn blook-btn-primary";
         saveBtn.textContent = "Save as Preset";
         actionButtonGroup.append(applyBtn, saveBtn);
-        inputGroup.append(imgIn, bgIn, nameIn, rareIn, colorWrapper, actionButtonGroup);
+        inputGroup.append(imgIn, bgIn, nameIn, rareIn, colorWrapper, sizeWrapper, actionButtonGroup);
         editorSection.append(editorTitle, inputGroup);
         const previewSection = document.createElement("div");
         previewSection.className = "blook-section";
@@ -13864,6 +14075,7 @@ button,
             const name = nameIn.value.trim();
             const rare = rareIn.value.trim();
             const col = colIn.value;
+            const size = parseInt(sizeIn.value, 10) || 100;
             if (!img && !name && !rare) {
                 previewBoxEl.innerHTML = `<div class="preview-empty">Preview will appear here</div>`;
                 document.getElementById('currentSeedText').textContent = '-';
@@ -13873,7 +14085,7 @@ button,
             previewBoxEl.innerHTML = `
         <div class="preview-wrapper">
             ${bg ? `<img class="preview-bg" src="${bg}" alt="bg" onerror="this.style.display='none'">` : ''}
-            ${img ? `<img class="preview-blook" src="${img}" alt="blook" onerror="this.parentElement.parentElement.innerHTML='<div class=preview-empty>Images failed to load</div>'">` : ''}
+            ${img ? `<img class="preview-blook" src="${img}" alt="blook" style="transform: scale(${size/100})" onerror="this.parentElement.parentElement.innerHTML='<div class=preview-empty>Images failed to load</div>'">` : ''}
         </div>
         <div class="preview-info">
             ${name ? `<div class="preview-name">${name}</div>` : ''}
@@ -13885,7 +14097,8 @@ button,
                 bg: bgIn.value,
                 name: nameIn.value,
                 rare: rareIn.value,
-                col: colIn.value
+                col: colIn.value,
+                size: size
             };
             const seed = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
             const currentSeedTextEl = document.getElementById('currentSeedText');
@@ -13896,6 +14109,10 @@ button,
         };
         [imgIn, bgIn, nameIn, rareIn].forEach(input => {
             input.addEventListener('input', updatePreview);
+        });
+        sizeIn.addEventListener('input', () => {
+            updateSizeFill();
+            updatePreview();
         });
         const setPresetCookie = typeof setCookie !== 'undefined' ? setCookie :
             (name, value, days = 365) => {
@@ -14001,12 +14218,16 @@ button,
                 presetGrid.appendChild(card);
             });
         };
-        const updateBlook = (img, bg, name, rare, col) => {
+        const updateBlook = (img, bg, name, rare, col, size) => {
             const b = document.querySelector('img[class*="blook"]');
             const g = document.querySelector('img[class*="_rightBackground"]');
             const n = document.querySelector('div[style*="white-space: nowrap"]');
             const r = document.querySelector('div[class*="Rarity"]');
             if (b && img) b.src = img;
+            if (b && size && Number.isFinite(size)) {
+                b.style.transformOrigin = 'center center';
+                b.style.transform = size === 100 ? '' : `scale(${size / 100})`;
+            }
             if (g && bg) g.src = bg;
             if (r) {
                 if (rare) r.textContent = rare;
@@ -14028,11 +14249,14 @@ button,
             rareIn.value = data.rare || '';
             colIn.value = data.col || '#ffffff';
             colTextIn.value = data.col || '#ffffff';
+            const sz = parseInt(data.size, 10);
+            sizeIn.value = Number.isFinite(sz) ? Math.min(parseInt(sizeIn.max,10), Math.max(parseInt(sizeIn.min,10), sz)) : 100;
+            updateSizeFill();
             updatePreview();
         };
         applyBtn.onclick = () => {
             try {
-                updateBlook(imgIn.value, bgIn.value, nameIn.value, rareIn.value, colIn.value);
+                updateBlook(imgIn.value, bgIn.value, nameIn.value, rareIn.value, colIn.value, parseInt(sizeIn.value, 10));
                 Swal.fire({
                     toast: true,
                     position: "bottom",
@@ -14065,7 +14289,8 @@ button,
                 bg: bgIn.value,
                 name: nameIn.value,
                 rare: rareIn.value,
-                col: colIn.value
+                col: colIn.value,
+                size: parseInt(sizeIn.value, 10) || 100
             };
             const presets = loadPresets();
             presets.push(preset);
@@ -14188,7 +14413,8 @@ button,
                 bg: bgIn.value,
                 name: nameIn.value,
                 rare: rareIn.value,
-                col: colIn.value
+                col: colIn.value,
+                size: parseInt(sizeIn.value, 10) || 100
             };
             const seed = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
             seedDisplay.textContent = JSON.stringify(data, null, 2);
@@ -14206,7 +14432,8 @@ button,
                     bg: bgIn.value,
                     name: nameIn.value,
                     rare: rareIn.value,
-                    col: colIn.value
+                    col: colIn.value,
+                    size: parseInt(sizeIn.value, 10) || 100
                 };
                 seed = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
             }
@@ -15253,7 +15480,7 @@ function(amount) {
         codingCredits.append(createCredit("Full GUI Dev", "Cathead+landsedge"));
         codingCredits.append(createCredit("Module Dev", "redhorse26+landsedge+Lil Skittle"));
         codingCredits.append(createCredit("Design Dev", "Lil Skittle+landsedge"));
-        codingCredits.append(createCredit("Contributor", "DannyDan"));
+        codingCredits.append(createCredit("Contributor", "DannyDan+Density006+Juro5000"));
         codingCredits.append(createCredit("Original Blooket Cheats", 'gliz <i class="fas fa-long-arrow-alt-right"></i> Minesraft2 <i class="fas fa-long-arrow-alt-right"></i> 05Konz'));
         const creditLinks = document.createElement("ul");
         creditLinks.className = classes.creditLinks;
