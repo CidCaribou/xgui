@@ -2,7 +2,7 @@
 * Hook.js Lite
 * Version: 1.5 Lite
 * Original Author: Landsedge
-* Contributors: redhorse26, juro50000
+* Contributors: redhorse26, juro50000, LegendAaronC
 */
 (async()=>{let e=document.querySelector("#app")||document.body,t=Object.keys(e).find(e=>e.startsWith("__react")),n=null,o=null;if(t&&function e(t,o=0){if(!(!t||o>25||n)){try{if(t.memoizedState){let i=t.memoizedState,s=0;for(;i&&s<20&&!n;){let a=i.memoizedState;if(a&&void 0!==a.hasJoined&&a.send&&a.onStateChange)return void(n=a);i=i.next,s++}}}catch{}e(t.child,o+1),e(t.sibling,o+1)}}(e[t]),!n)return;if(window.messageFlow=[],window.monitorEnabled=!0,window.interceptEnabled=!1,window.interceptQueue=[],window.interceptIncoming=!1,window.interceptOutgoing=!1,window.repeaterMessages=[],window.interceptRules=new Map,window.eventListeners=new Map,window.wsConnected=!0,n.connection&&n.connection.transport&&n.connection.transport.ws){let i=n.connection.transport.ws,s=i.onmessage,a=i.onclose,r=i.onerror;i.onmessage=function(e){if(window.monitorEnabled)try{Date.now()}catch(t){}return s.call(this,e)},i.onclose=function(e){window.wsConnected=!1,a&&a.call(this,e)},i.onerror=function(e){window.wsConnected=!1,r&&r.call(this,e)}}let l=n.onMessage.bind(n),c=new Map,d=new Map;n.onMessage=function(e,t){let n=function(...n){let o="*"===e?n[0]:e,i="*"===e?n[1]:n[0];if(window.breakpoints){let s=e=>{let t=`${o}_${e}`,n=window.breakpoints.get(t);if(n&&n.enabled){n.hitCount++;try{n.callback(i,o,e)}catch(s){}}};s("IN"),s("BOTH")}let a=window.eventListeners.get(o);a&&a.length>0&&a.forEach(e=>{try{e(i,o)}catch(t){}});let r=window.interceptRules.get(o);if(r&&r.enabled&&"IN"===r.direction){if("DROP"===r.action)return void(window.monitorEnabled&&window.messageFlow.push({direction:"IN",type:o,message:i,timestamp:Date.now(),id:Date.now()+Math.random(),dropped:!0}));if("TRANSFORM"===r.action)try{let l=r.transform(i);window.monitorEnabled&&window.messageFlow.push({direction:"IN",type:o,message:l,timestamp:Date.now(),id:Date.now()+Math.random(),autoTransformed:!0,original:i});let c=[...n];return 1===c.length?c[0]=l:2===c.length&&(c[1]=l),t(...c)}catch(d){}}if(!window.interceptEnabled||!window.interceptIncoming)return window.monitorEnabled&&window.messageFlow.push({direction:"IN",type:o,message:i,timestamp:Date.now(),id:Date.now()+Math.random()}),t(...n);{let m={direction:"IN",type:o,message:i,timestamp:Date.now(),id:Date.now()+Math.random(),originalArgs:n,originalCallback:t,status:"pending"};window.interceptQueue.push(m)}};return c.set(e,n),d.set(e,t),l(e,n)};var m=n.send.bind(n);n.send=function(e,t){if(window.breakpoints){let n=n=>{let o=`${e}_${n}`,i=window.breakpoints.get(o);if(i&&i.enabled){i.hitCount++;try{i.callback(t,e,n)}catch(s){}}};n("OUT"),n("BOTH")}let o=window.interceptRules.get(e);if(o&&o.enabled&&"OUT"===o.direction){if("DROP"===o.action)return void(window.monitorEnabled&&window.messageFlow.push({direction:"OUT",type:e,message:t,timestamp:Date.now(),id:Date.now()+Math.random(),dropped:!0}));if("TRANSFORM"===o.action)try{let i=o.transform(t);return window.monitorEnabled&&window.messageFlow.push({direction:"OUT",type:e,message:i,timestamp:Date.now(),id:Date.now()+Math.random(),autoTransformed:!0,original:t}),m(e,i)}catch(s){}}if(!window.interceptEnabled||!window.interceptOutgoing)return window.monitorEnabled&&window.messageFlow.push({direction:"OUT",type:e,message:t,timestamp:Date.now(),id:Date.now()+Math.random()}),m(e,t);{let a={direction:"OUT",type:e,message:t,timestamp:Date.now(),id:Date.now()+Math.random(),originalType:e,originalData:JSON.parse(JSON.stringify(t)),status:"pending"};window.interceptQueue.push(a)}};let p=window.location.href.includes("/host");if(p)o={name:"Host"};else{n.state&&n.state.players||await new Promise(e=>{let t=setInterval(()=>{n.state&&n.state.players&&(clearInterval(t),e())},100)});let g=n.state.players;o=Array.from(g.values())[0]}o&&(window.colyseusRoom=n,window.me=o,window.myPlayer=o,window.colyseus={room:n,state:n.state,connection:n.connection,sessionId:n.sessionId,id:n.id,name:n.name,players:n.state?.players,getRoomData:()=>({sessionId:n.sessionId,id:n.id,name:n.name,hasJoined:n.hasJoined}),getAllPlayers:()=>n.state?.players?Array.from(n.state.players.entries()).map(([e,t])=>({id:e,name:t.name,player:t})):[]},window.hook={room:n,me:o,inspect(){console.log("Room:",n),console.log("Player:",o),console.log("Colyseus:",window.colyseus)},sendMessage(e,t={},o="OUT"){if(n){if("OUT"===o)return n.send(e,t);if("IN"===o){let i=d.get(e)||d.get("*");i&&(i(t),window.monitorEnabled&&window.messageFlow.push({direction:"IN",type:e,message:t,timestamp:Date.now(),id:Date.now()+Math.random(),simulated:!0}))}}},listen(e,t,n="BOTH"){if("function"!=typeof t||!["IN","OUT","BOTH"].includes(n))return;window.breakpoints||(window.breakpoints=new Map);let o=`${e}_${n}`;window.breakpoints.set(o,{messageType:e,callback:t,direction:n,enabled:!0,hitCount:0})},unlisten(e,t="BOTH"){if(window.breakpoints){if("BOTH"===t)window.breakpoints.delete(`${e}_IN`),window.breakpoints.delete(`${e}_OUT`),window.breakpoints.delete(`${e}_BOTH`);else{let n=`${e}_${t}`;window.breakpoints.delete(n)}}},status(){let e=window.wsConnected&&n.connection&&n.connection.transport&&n.connection.transport.ws;return console.log("WebSocket Status:",e?"CONNECTED":"DISCONNECTED"),e&&(console.log("Room ID:",n.id),console.log("Session ID:",n.sessionId)),e},reconnect(){let e=document.querySelector("#app")||document.body,t=Object.keys(e).find(e=>e.startsWith("__react")),o=null;if(t&&function e(t,n=0){if(!(!t||n>25||o)){try{if(t.memoizedState){let i=t.memoizedState,s=0;for(;i&&s<20&&!o;){let a=i.memoizedState;if(a&&void 0!==a.hasJoined&&a.send&&a.onStateChange)return void(o=a);i=i.next,s++}}}catch{}e(t.child,n+1),e(t.sibling,n+1)}}(e[t]),!o)return;if(n=o,window.colyseusRoom=n,n.connection&&n.connection.transport&&n.connection.transport.ws){let i=n.connection.transport.ws,s=i.onmessage,a=i.onclose,r=i.onerror;i.onmessage=function(e){if(window.monitorEnabled)try{Date.now()}catch(t){}return s.call(this,e)},i.onclose=function(e){window.wsConnected=!1,a&&a.call(this,e)},i.onerror=function(e){window.wsConnected=!1,r&&r.call(this,e)}}let l=n.onMessage.bind(n),c=new Map;n.onMessage=function(e,t){let n=function(...n){let o="*"===e?n[0]:e,i="*"===e?n[1]:n[0],s=window.eventListeners.get(o);s&&s.length>0&&s.forEach(e=>{try{e(i,o)}catch(t){}});let a=window.interceptRules.get(o);if(a&&a.enabled&&"IN"===a.direction){if("DROP"===a.action)return void(window.monitorEnabled&&window.messageFlow.push({direction:"IN",type:o,message:i,timestamp:Date.now(),id:Date.now()+Math.random(),dropped:!0}));if("TRANSFORM"===a.action)try{let r=a.transform(i);window.monitorEnabled&&window.messageFlow.push({direction:"IN",type:o,message:r,timestamp:Date.now(),id:Date.now()+Math.random(),autoTransformed:!0,original:i});let l=[...n];return 1===l.length?l[0]=r:2===l.length&&(l[1]=r),t(...l)}catch(c){}}if(!window.interceptEnabled||!window.interceptIncoming)return window.monitorEnabled&&window.messageFlow.push({direction:"IN",type:o,message:i,timestamp:Date.now(),id:Date.now()+Math.random()}),t(...n);{let d={direction:"IN",type:o,message:i,timestamp:Date.now(),id:Date.now()+Math.random(),originalArgs:n,originalCallback:t,status:"pending"};window.interceptQueue.push(d)}};return c.set(e,n),d.set(e,t),l(e,n)};let p=n.send.bind(n);n.send=function(e,t){let n=window.interceptRules.get(e);if(n&&n.enabled&&"OUT"===n.direction){if("DROP"===n.action)return void(window.monitorEnabled&&window.messageFlow.push({direction:"OUT",type:e,message:t,timestamp:Date.now(),id:Date.now()+Math.random(),dropped:!0}));if("TRANSFORM"===n.action)try{let o=n.transform(t);return window.monitorEnabled&&window.messageFlow.push({direction:"OUT",type:e,message:o,timestamp:Date.now(),id:Date.now()+Math.random(),autoTransformed:!0,original:t}),p(e,o)}catch(i){}}if(!window.interceptEnabled||!window.interceptOutgoing)return window.monitorEnabled&&window.messageFlow.push({direction:"OUT",type:e,message:t,timestamp:Date.now(),id:Date.now()+Math.random()}),p(e,t);{let s={direction:"OUT",type:e,message:t,timestamp:Date.now(),id:Date.now()+Math.random(),originalType:e,originalData:JSON.parse(JSON.stringify(t)),status:"pending"};window.interceptQueue.push(s)}},m=p,window.wsConnected=!0,window.hook.room=n},intercept:{add(e,t,n="OUT"){"function"==typeof t&&["IN","OUT","BOTH"].includes(n)&&("BOTH"===n?(window.interceptRules.set(e+"_IN",{messageType:e,transform:t,direction:"IN",enabled:!0,action:"TRANSFORM"}),window.interceptRules.set(e+"_OUT",{messageType:e,transform:t,direction:"OUT",enabled:!0,action:"TRANSFORM"})):window.interceptRules.set(e,{messageType:e,transform:t,direction:n,enabled:!0,action:"TRANSFORM"}))},replace(e,t,n,o="OUT"){this.add(e,e=>"object"==typeof e&&null!==e?{...e,[t]:n}:e,o)},drop(e,t="OUT"){["IN","OUT","BOTH"].includes(t)&&("BOTH"===t?(window.interceptRules.set(e+"_IN",{messageType:e,direction:"IN",enabled:!0,action:"DROP"}),window.interceptRules.set(e+"_OUT",{messageType:e,direction:"OUT",enabled:!0,action:"DROP"})):window.interceptRules.set(e,{messageType:e,direction:t,enabled:!0,action:"DROP"}))},remove(e,t=null){"BOTH"===t||null===t?(window.interceptRules.delete(e),window.interceptRules.delete(e+"_IN"),window.interceptRules.delete(e+"_OUT")):window.interceptRules.delete(e)},list(){0!==window.interceptRules.size?(console.log("\n=== Active Intercept Rules ==="),window.interceptRules.forEach((e,t)=>{let n=e.enabled?"✓":"✗",o=e.action||"TRANSFORM";console.log(`${n} ${e.messageType} [${e.direction}] - ${o}`)}),console.log(`Total: ${window.interceptRules.size} rules`)):console.log("No active intercept rules")},enableRule(e){let t=window.interceptRules.get(e);t&&(t.enabled=!0)},disableRule(e){let t=window.interceptRules.get(e);t&&(t.enabled=!1)},clearRules(){window.interceptRules.clear()},enable(){window.interceptEnabled=!0},disable(){window.interceptEnabled=!1},toggle(){window.interceptEnabled=!window.interceptEnabled},incoming(e){window.interceptIncoming=e},outgoing(e){window.interceptOutgoing=e},queue:()=>window.interceptQueue,clear(){window.interceptQueue=[]},forward(e,t=!1){let n=window.interceptQueue[e];if(n&&"pending"===n.status){if(n.status="forwarded","OUT"===n.direction)m(n.type,n.message);else if(n.originalCallback&&n.originalArgs)try{let o=[...n.originalArgs];1===o.length?o[0]=n.message:2===o.length&&(o[1]=n.message),n.originalCallback(...o)}catch(i){}window.monitorEnabled&&window.messageFlow.push({direction:n.direction,type:n.type,message:n.message,timestamp:Date.now(),id:Date.now()+Math.random(),modified:t}),window.interceptQueue.splice(e,1)}},drop(e){let t=window.interceptQueue[e];t&&"pending"===t.status&&(t.status="dropped",window.interceptQueue.splice(e,1))}},monitor:{on(){window.monitorEnabled=!0},off(){window.monitorEnabled=!1},toggle(){window.monitorEnabled=!window.monitorEnabled},status(){console.log("Monitor:",window.monitorEnabled?"ON":"OFF"),console.log("Captured messages:",window.messageFlow.length)},show(e=20){console.log(`Last ${e} messages:`);let t=window.messageFlow.slice(-e);t.forEach((e,n)=>{let o="IN"===e.direction?"IN ":"OUT",i=window.messageFlow.length-t.length+n,s=e.autoTransformed?" [TRANSFORMED]":"",a=e.dropped?" [DROPPED]":"";console.log(`[${i}] ${o} ${e.type}${s}${a}`,e.message)})},clear(){window.messageFlow=[]},search(e){let t=window.messageFlow.filter(t=>JSON.stringify(t).toLowerCase().includes(e.toLowerCase()));0!==t.length?(console.log(`Found ${t.length} matching messages:`),t.forEach((e,t)=>{let n="IN"===e.direction?"IN ":"OUT";console.log(`[${t}] ${n} ${e.type}`,e.message)})):console.log("No matching messages found.")},analyze(){let e={};window.messageFlow.forEach(t=>{let n=`${t.direction}:${t.type}`;e[n]=(e[n]||0)+1}),console.log("\nMessage statistics:"),Object.entries(e).sort((e,t)=>t[1]-e[1]).forEach(([e,t])=>{console.log(`  ${e}: ${t}`)}),console.log("\nTotal messages:",window.messageFlow.length)},export(){let e=JSON.stringify(window.messageFlow,null,2);return navigator.clipboard.writeText(e),e}}})})();
     
@@ -644,15 +644,22 @@ button,
             },
             exponents: ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"],
             formatNumber(input) {
-                const [number, exponent] = (input = parseFloat(input)).toLocaleString(undefined, {
-                    notation: "engineering"
-                }).toLowerCase().split("e");
-                if (exponent < 15) return number + ["", "k", "M", "B", "T"][exponent / 3];
-                const [num, exp] = input.toLocaleString(undefined, {
-                    notation: "scientific"
-                }).toLowerCase().split("e");
-                return num + " \xd7 10" + exp.split("").reduce((a, b) => a + Logs.exponents[b], "");
-            },
+    const parsed = parseFloat(input);
+    if (!isFinite(parsed) || isNaN(parsed)) return "0";
+    if (parsed === 0) return "0";
+    const abs = Math.abs(parsed);
+    if (abs < 1e15) {
+        if (abs < 1e3) return String(Math.round(parsed));
+        if (abs < 1e6) return (parsed / 1e3).toFixed(1).replace(/\.0$/, "") + "k";
+        if (abs < 1e9) return (parsed / 1e6).toFixed(1).replace(/\.0$/, "") + "M";
+        if (abs < 1e12) return (parsed / 1e9).toFixed(1).replace(/\.0$/, "") + "B";
+        return (parsed / 1e12).toFixed(1).replace(/\.0$/, "") + "T";
+    }
+    const exp = Math.floor(Math.log10(abs));
+    const mantissa = (parsed / Math.pow(10, exp)).toFixed(2);
+    const expStr = String(exp).split("").map(c => c === "-" ? "⁻" : Logs.exponents[c]).join("");
+    return mantissa + " \xd7 10" + expStr;
+},
             leaderboardCache: {},
             colyseusInterval: null,
             firebaseInterval: null,
@@ -5461,6 +5468,23 @@ button,
                 img: "https://media.blooket.com/image/upload/v1663212881/Media/logos/Fishing_Frenzy_Logo_Resized.png",
                 name: "Fishing Frenzy",
                 cheats: [{
+                        name: "Crash Host (Fishing)",
+                        description: "Crashes the Host's Game for Fishing Frenzy",
+                        run: function() {
+                            function reactHandler() {
+                                return Object.values(document.querySelector('#app>div>div'))[1].children[0]._owner;
+                            }
+
+                            function setv(args) {
+                                reactHandler().stateNode.props.liveGameController.setVal({
+                                    path: "c/" + reactHandler().stateNode.props.client.name + "/" + args[0],
+                                    val: args.slice(1, args.length).join(" ")
+                                });
+                            }
+                            setv(['w/toString', 't']);
+                        }
+                    },
+                    {
                         name: "Remove Distractions",
                         description: "Removes distractions",
                         type: "toggle",
@@ -9099,7 +9123,7 @@ button,
             };
         }
         const versions = [
-            ["Version 7.1.3x", "Fixed simulate unlock blooks, Fixed use any blook not working in blooks page, And added Size for client blooks", "null"],
+            ["Version 7.1.3x", "Fixed simulate unlock blooks. Fixed use any blook not working in blooks page. Added Size for client blooks. Added Crash Host Fishing Frenzy. Fixed Leaderboard Tab error.", "null"],
             ["Version 7.1.0x", "Fixed the Custom Blook Editor so blooks now load correctly on the Play page. Updated the Blook Part List in the editor to include new items. Fixed the custom module issue where CSP was always detected. Corrected the position of CSP alerts in Custom Modules. Added Sweet Alerts to the Client Blook Editor. Fixed window.alert not working on certain pages. Added Gold Lock. Added Crypto Lock. Added Blooket Part Unlocker. Added a Leaderboard Tab and updated it for Colyseus.", "null"],
             ["Version 7x", "Redesigned alt manager, Updated Client Blooks UI, Improved changelog page, Cleaned up a lot of code, Added helpful quality-of-life features, Brought features from BCP into X-GUI, Added new modules, Settings now save globally, Removed glow and made the UI less rounded, and Updated info and credits", "null"],
             ["Version 6.70x", "ADDED SMOOTH GUI ANIMATIONS, FIXED CUSTOM MODULE BUGS, ALLOWED TEXT VALUES FOR STATS, FIXED CRYPTO STEALING, ADDED SPAM CRYPTO HACK, UPDATED ICONS, FIXED STORAGE SYNC, AND UPDATED CREDITS.", "null"],
@@ -15480,13 +15504,37 @@ function(amount) {
         codingCredits.append(createCredit("Full GUI Dev", "Cathead+landsedge"));
         codingCredits.append(createCredit("Module Dev", "redhorse26+landsedge+Lil Skittle"));
         codingCredits.append(createCredit("Design Dev", "Lil Skittle+landsedge"));
-        codingCredits.append(createCredit("Contributor", "DannyDan+Density006+Juro5000"));
+        codingCredits.append(createCredit("Contributor", "DannyDan+Density006+Juro5000+" +'<span id="aaron-link" style="cursor:pointer;">LegendAaronC</span>'));
         codingCredits.append(createCredit("Original Blooket Cheats", 'gliz <i class="fas fa-long-arrow-alt-right"></i> Minesraft2 <i class="fas fa-long-arrow-alt-right"></i> 05Konz'));
         const creditLinks = document.createElement("ul");
         creditLinks.className = classes.creditLinks;
         creditLinks.append(createCredit("Our Github", '<a target="_blank" href="https://x-gui.netlify.app">X-GUI CHEATS/GITHUB</a>'));
         creditLinks.append(createCredit("Our Website", '<a target="_blank" href="#">More Info/Website</a>'));
         creditLinks.append(createCredit("Discord", '<a target="_blank" href="https://discord.gg/xKD4zVRH4F">JOIN THE SERVER</a>'));
+        document.addEventListener("click", function (e) {
+    if (e.target && e.target.id === "aaron-link") {
+        legendAaronCClicked();
+    }
+});
+function legendAaronCClicked() {
+    if (areSweetAlertsEnabled()) {
+                                Swal.fire({
+                                    title: 'Secret',
+                                    text: `It's Aaron, not A A Ron.`,
+                                    icon: 'info',
+                                    toast: true,
+                                    position: 'bottom',
+                                    timer: 3000,
+                                    timerProgressBar: true,
+                                    showConfirmButton: false,
+                                    background: '#151534',
+                                    color: '#ffffff',
+                                    iconColor: '#ffffff'
+                                });
+                            } else {
+                                alert(`It's Aaron, not A A Ron.`);
+}
+}
 
         function parseTime(d) {
             const hour = d.getHours() % 12 == 0 ? 12 : d.getHours() % 12;
@@ -17020,5 +17068,5 @@ function(amount) {
         })()
         window.addEventListener("keydown", keydown);
     });
-    cheat()
+    cheat();
 })();
