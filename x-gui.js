@@ -8706,14 +8706,14 @@ button,
                 searchResultInfo.className = classes.searchResultInfo;
                 const searchResultName = document.createElement("div");
                 searchResultName.className = classes.searchResultName;
-                searchResult.dataset[datasets.name] = (searchResultName.innerText = cheat.name + (cheat.type == "toggle" && !cheat.name.includes("toggle") ? " (Toggle)" : "")).toLowerCase();
+                searchResult.dataset[datasets.name] = (searchResultName.innerText = cheat.name + (cheat.type == "toggle" && !cheat.name.includes("toggle") ? " (Toggle)" : "") + " (" + cheats[mode].name + ")").toLowerCase();
                 searchResult.dataset[datasets.mode] = cheats[mode].name.toLowerCase();
                 const searchResultDescription = document.createElement("div");
                 searchResultDescription.className = classes.searchResultDescription;
                 searchResult.dataset[datasets.description] = (searchResultDescription.innerText = cheat.description).toLowerCase();
                 searchResultInfo.append(searchResultName, searchResultDescription);
                 searchResult.onclick = () => {
-                    path.push(searchResultName.innerText, cheatsPage);
+                    path.push(cheat.name + (cheat.type == "toggle" && !cheat.name.includes("toggle") ? " (Toggle)" : ""), cheatsPage);
                     cheatElement.scrollIntoView();
                     cheatElement.animate(
                         [{
